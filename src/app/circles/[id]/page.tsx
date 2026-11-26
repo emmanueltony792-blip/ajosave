@@ -100,6 +100,9 @@ export default async function CircleDetailPage({ params }: Props) {
   return (
     <div className={styles.page}>
       <div className="container">
+        {/* Fire success toast when arriving from CreateCircleWizard (#393) */}
+        <CircleCreatedToast />
+
         <div className={styles.header}>
           <div>
             <h1 className={styles.title}>{circle.name}</h1>
