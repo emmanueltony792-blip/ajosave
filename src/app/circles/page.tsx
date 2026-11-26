@@ -60,9 +60,28 @@ export default async function CirclesPage({ searchParams }: CirclesPageProps) {
           <CircleFiltersForm filters={filters} />
         </Suspense>
 
-        {/* Circle list — fetched client-side with skeleton loading states */}
-        <Suspense fallback={<CircleListSkeleton />}>
-          <CircleList filters={filters} />
+        <Suspense fallback={<div className={styles.empty}><p>Loading circles...</p></div>}>
+          {circles.length === 0 ? (
+            <div className={styles.empty}>
+              {hasActiveFilters ? (
+                <>
+                  <p>No circles match your filters.</p>
+                  <Link href="/circles" className="btn btn--primary">
+                    Clear filters
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p>No open circles yet.</p>
+                  <Link href="/circles/create" className="btn btn--primary">
+                    Be the first to create one
+                  </Link>
+                </>
+              )}
+            </div>
+          ) : (
+            <PaginatedCircleList circles={circles} />
+          )}
         </Suspense>
       </div>
     </div>
