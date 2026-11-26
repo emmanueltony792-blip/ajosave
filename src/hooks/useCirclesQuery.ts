@@ -28,8 +28,13 @@ interface UseCirclesQueryResult {
  * Any component can trigger a shared refetch across all consumers by calling:
  *   const { invalidateQuery } = useQueryInvalidation();
  *   invalidateQuery("circles");
+ *
+ * @param filters Optional discovery filters. When provided, the query string
+ *                is derived from them and the hook refetches whenever the
+ *                *serialised* filter set changes (so passing a new object with
+ *                the same values does not cause a redundant request).
  */
-export function useCirclesQuery(): UseCirclesQueryResult {
+export function useCirclesQuery(filters?: CircleFilters): UseCirclesQueryResult {
   const { getQueryVersion, invalidateQuery: _invalidateQuery } = useQueryInvalidation();
 
   // Track the invalidation version as a refetch trigger.
@@ -55,7 +60,7 @@ export function useCirclesQuery(): UseCirclesQueryResult {
     setIsLoading(true);
     setError(null);
 
-    fetch("/api/circles")
+    fetch(`/api/v1/circles?${query}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -77,9 +82,9 @@ export function useCirclesQuery(): UseCirclesQueryResult {
     return () => {
       cancelled = true;
     };
-    // `version` changes whenever invalidateQuery("circles") is called,
-    // causing this effect to re-run and refetch.
-  }, [version]);
+    // `version` changes whenever invalidateQuery("circles") is called;
+    // `query` changes when the active filters change. Either triggers a refetch.
+  }, [version, query]);
 
   const refresh = useCallback(() => {
     // Force refetch by resetting the stale timestamp before invalidating.
@@ -88,4 +93,22 @@ export function useCirclesQuery(): UseCirclesQueryResult {
   }, [_invalidateQuery]);
 
   return { circles, isLoading, error, refresh };
+}
+
+/**
+ * Normalise the various response shapes the circles endpoint can return:
+ *   - Cursor pagination (default):  { data: { items: Circle[], … } }
+ *   - Legacy offset pagination:     { data: { data: Circle[], … } }
+ *   - Plain array (e.g. filter=mine): { data: Circle[] }
+ */
+function extractCircles(json: unknown): Circle[] {
+  const data = (json as { data?: unknown })?.data;
+  if (Array.isArray(data)) return data as Circle[];
+  if (data && Array.isArray((data as { items?: unknown }).items)) {
+    return (data as { items: Circle[] }).items;
+  }
+  if (data && Array.isArray((data as { data?: unknown }).data)) {
+    return (data as { data: Circle[] }).data;
+  }
+  return [];
 }
